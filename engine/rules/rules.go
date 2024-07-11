@@ -7,27 +7,29 @@ import (
 	"github.com/zricethezav/gitleaks/v8/cmd/generate/config/rules"
 )
 
-const TagApiKey = "api-key"
-const TagClientId = "client-id"
-const TagClientSecret = "client-secret"
-const TagSecretKey = "secret-key"
-const TagAccessKey = "access-key"
-const TagAccessId = "access-id"
-const TagApiToken = "api-token"
-const TagAccessToken = "access-token"
-const TagRefreshToken = "refresh-token"
-const TagPrivateKey = "private-key"
-const TagPublicKey = "public-key"
-const TagEncryptionKey = "encryption-key"
-const TagTriggerToken = "trigger-token"
-const TagRegistrationToken = "registration-token"
-const TagPassword = "password"
-const TagUploadToken = "upload-token"
-const TagPublicSecret = "public-secret"
-const TagSensitiveUrl = "sensitive-url"
-const TagWebhook = "webhook"
+const (
+	TagApiKey          = "api-key"
+	TagClientId        = "client-id"
+	TagClientSecret    = "client-secret"
+	TagSecretKey       = "secret-key"
+	TagAccessKey       = "access-key"
+	TagAccessId        = "access-id"
+	TagApiToken        = "api-token"
+	TagAccessToken     = "access-token"
+	TagRefreshToken    = "refresh-token"
+	TagPrivateKey      = "private-key"
+	TagPublicKey       = "public-key"
+	TagEncryptionKey   = "encryption-key"
+	TagTriggerToken    = "trigger-token"
+	TagRegistrationToken = "registration-token"
+	TagPassword        = "password"
+	TagUploadToken     = "upload-token"
+	TagPublicSecret    = "public-secret"
+	TagSensitiveUrl    = "sensitive-url"
+	TagWebhook         = "webhook"
+)
 
-func getDefaultRules() *[]Rule {
+func fetchDefaultRules() *[]Rule {
 	allRules := &[]Rule{
 		{Rule: *rules.AdafruitAPIKey(), Tags: []string{TagApiKey}},
 		{Rule: *rules.AdobeClientID(), Tags: []string{TagClientId}},
@@ -137,8 +139,6 @@ func getDefaultRules() *[]Rule {
 		{Rule: *rules.OktaAccessToken(), Tags: []string{TagAccessToken}},
 		{Rule: *rules.OpenAI(), Tags: []string{TagApiKey}},
 		{Rule: *rules.PlaidAccessID(), Tags: []string{TagClientId}},
-		// {Rule: *rules.PlaidSecretKey(), Tags: []string{TagSecretKey}}, https://github.com/Checkmarx/2ms/issues/226
-		// {Rule: *rules.PlaidAccessToken(), Tags: []string{TagApiToken}}, https://github.com/Checkmarx/2ms/issues/226
 		{Rule: *rules.PlanetScalePassword(), Tags: []string{TagPassword}},
 		{Rule: *rules.PlanetScaleAPIToken(), Tags: []string{TagApiToken}},
 		{Rule: *rules.PlanetScaleOAuthToken(), Tags: []string{TagAccessToken}},
@@ -150,7 +150,6 @@ func getDefaultRules() *[]Rule {
 		{Rule: *rules.RapidAPIAccessToken(), Tags: []string{TagAccessToken}},
 		{Rule: *rules.ReadMe(), Tags: []string{TagApiToken}},
 		{Rule: *rules.RubyGemsAPIToken(), Tags: []string{TagApiToken}},
-		// {Rule: *rules.ScalingoAPIToken(), Tags: []string{TagApiToken}}, https://github.com/Checkmarx/2ms/issues/226
 		{Rule: *rules.SendbirdAccessID(), Tags: []string{TagAccessId}},
 		{Rule: *rules.SendbirdAccessToken(), Tags: []string{TagAccessToken}},
 		{Rule: *rules.SendGridAPIToken(), Tags: []string{TagApiToken}},
@@ -175,7 +174,6 @@ func getDefaultRules() *[]Rule {
 		{Rule: *rules.StripeAccessToken(), Tags: []string{TagAccessToken}},
 		{Rule: *rules.SquareAccessToken(), Tags: []string{TagAccessToken}},
 		{Rule: *rules.SquareSpaceAccessToken(), Tags: []string{TagAccessToken}},
-		// {Rule: *rules.SumoLogicAccessID(), Tags: []string{TagAccessId}}, https://github.com/Checkmarx/2ms/issues/226
 		{Rule: *rules.SumoLogicAccessToken(), Tags: []string{TagAccessToken}},
 		{Rule: *rules.Snyk(), Tags: []string{TagApiKey}},
 		{Rule: *rules.TeamsWebhook(), Tags: []string{TagWebhook}},
@@ -201,7 +199,7 @@ func getDefaultRules() *[]Rule {
 	return allRules
 }
 
-func getSpecialRules() *[]Rule {
+func fetchSpecialRules() *[]Rule {
 	specialRules := []Rule{
 		{Rule: *HardcodedPassword(), Tags: []string{TagPassword}},
 	}
@@ -223,42 +221,31 @@ func isRuleMatch(rule Rule, tags []string) bool {
 	return false
 }
 
-func selectRules(allRules *[]Rule, tags []string) *[]Rule {
+func filterRules(allRules *[]Rule, tags []string, shouldIgnore bool) *[]Rule {
 	selectedRules := []Rule{}
 
 	for _, rule := range *allRules {
-		if isRuleMatch(rule, tags) {
+		if isRuleMatch(rule, tags) != shouldIgnore {
 			selectedRules = append(selectedRules, rule)
 		}
 	}
 	return &selectedRules
 }
 
-func ignoreRules(allRules *[]Rule, tags []string) *[]Rule {
-	selectedRules := []Rule{}
-
-	for _, rule := range *allRules {
-		if !isRuleMatch(rule, tags) {
-			selectedRules = append(selectedRules, rule)
-		}
-	}
-	return &selectedRules
-}
-
-func FilterRules(selectedList, ignoreList, specialList []string) *[]Rule {
+func applyRuleFilters(selectedList, ignoreList, specialList []string) *[]Rule {
 	if len(selectedList) > 0 && len(ignoreList) > 0 {
-		log.Warn().Msgf("Both 'rule' and 'ignoreRule' flags were provided, I will first take all in 'rule' and then remove all in 'ignoreRule' from the list.")
+		log.Warn().Msg("Both 'rule' and 'ignoreRule' flags were provided, I will first take all in 'rule' and then remove all in 'ignoreRule' from the list.")
 	}
 
-	selectedRules := getDefaultRules()
+	selectedRules := fetchDefaultRules()
 	if len(selectedList) > 0 {
-		selectedRules = selectRules(selectedRules, selectedList)
+		selectedRules = filterRules(selectedRules, selectedList, false)
 	}
 	if len(ignoreList) > 0 {
-		selectedRules = ignoreRules(selectedRules, ignoreList)
+		selectedRules = filterRules(selectedRules, ignoreList, true)
 	}
 	if len(specialList) > 0 {
-		specialRules := getSpecialRules()
+		specialRules := fetchSpecialRules()
 		for _, rule := range *specialRules {
 			for _, id := range specialList {
 				if strings.EqualFold(rule.Rule.RuleID, id) {
